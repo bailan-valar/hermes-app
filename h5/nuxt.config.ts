@@ -48,5 +48,13 @@ export default defineNuxtConfig({
       appName: 'Hermes',
       defaultModel: 'hermes-agent'
     }
+  },
+
+  // Deploy target: Cloudflare Pages. Builds the Nitro server as an edge worker
+  // (`dist/_worker.js`) so Pages runs SSR + the /api/hermes/* routes at the
+  // edge instead of a Node host. Connect this repo's `h5/` dir in the Pages
+  // dashboard and set HERMES_BASE_URL / HERMES_API_KEY as Pages env vars.
+  nitro: {
+    preset: 'cloudflare-pages'
   }
 })
