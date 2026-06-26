@@ -1,0 +1,308 @@
+/* =============================================================================
+   GLASS — the Liquid Glass material system
+   `.glass` is the base material: a translucent, refracting surface with a
+   specular top edge, inner glow, and floating shadow. Variants tune opacity.
+   ============================================================================= */
+
+.glass {
+  position: relative;
+  background: var(--glass-fill);
+  backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-md),
+    var(--inner-highlight),
+    var(--inner-edge);
+  /* Specular top/left bright edge + soft bottom/right shadow, via dual borders.
+     The ::before paints the bright refracted rim; ::after a faint inner tint. */
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    140deg,
+    var(--glass-border-bright) 0%,
+    var(--glass-border) 22%,
+    transparent 45%,
+    transparent 60%,
+    var(--glass-border-dim) 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Soft sheen sweeping the top of the surface */
+.glass::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 38%;
+  border-radius: inherit;
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    var(--glass-border-bright) 0%,
+    transparent 70%
+  );
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.glass--strong {
+  background: var(--glass-fill-strong);
+  backdrop-filter: blur(var(--blur-amount-strong)) saturate(190%);
+  -webkit-backdrop-filter: blur(var(--blur-amount-strong)) saturate(190%);
+  box-shadow: var(--shadow-lg), var(--inner-highlight), var(--inner-edge);
+}
+
+.glass--subtle {
+  background: var(--glass-fill-subtle);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  box-shadow: var(--shadow-sm), var(--inner-edge);
+}
+
+.glass--flat {
+  box-shadow: none;
+}
+
+/* Make sure real content sits above the decorative pseudo layers */
+.glass > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Interactive glass lift ──────────────────────────────────────── */
+.glass--interactive {
+  transition:
+    transform var(--dur-normal) var(--ease-spring),
+    box-shadow var(--dur-normal) var(--ease-out-expo),
+    background-color var(--dur-normal) var(--ease-standard);
+  will-change: transform;
+}
+.glass--interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg), var(--inner-highlight), var(--inner-edge);
+}
+.glass--interactive:active {
+  transform: translateY(-1px) scale(0.992);
+  transition-duration: var(--dur-fast);
+}
+
+/* =============================================================================
+   GLASS BUTTONS
+   ============================================================================= */
+.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+  border-radius: var(--radius-full);
+  background: var(--glass-fill);
+  backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-amount)) saturate(180%);
+  box-shadow: var(--shadow-sm), var(--inner-highlight), var(--inner-edge);
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    box-shadow var(--dur-normal) var(--ease-out-expo),
+    background-color var(--dur-normal) var(--ease-standard);
+  user-select: none;
+  white-space: nowrap;
+}
+.glass-btn:hover {
+  background: var(--glass-fill-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), var(--inner-highlight), var(--inner-edge);
+}
+.glass-btn:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 60ms;
+}
+.glass-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Primary — filled with the accent gradient */
+.glass-btn--primary {
+  color: #fff;
+  background: var(--accent-gradient);
+  background-size: 160% 160%;
+  box-shadow: var(--shadow-md), var(--inner-highlight);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.glass-btn--primary:hover {
+  background-position: 100% 0;
+  box-shadow: var(--shadow-glow);
+}
+.glass-btn--primary:disabled {
+  opacity: 0.5;
+}
+
+/* Icon-only round button */
+.glass-btn--icon {
+  padding: var(--space-3);
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+}
+
+/* Danger tint */
+.glass-btn--danger {
+  color: oklch(58% 0.22 25);
+}
+html[data-theme="dark"] .glass-btn--danger,
+:root:not([data-theme]) .glass-btn--danger {
+  /* keep legible in dark via media query below */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .glass-btn--danger {
+    color: oklch(72% 0.19 25);
+  }
+}
+.glass-btn--danger:hover {
+  background: oklch(72% 0.18 25 / 0.35);
+}
+
+/* =============================================================================
+   GLASS INPUTS
+   ============================================================================= */
+.glass-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  background: var(--glass-fill-subtle);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--inner-edge);
+  transition: border-color var(--dur-normal) var(--ease-standard),
+    box-shadow var(--dur-normal) var(--ease-standard),
+    background-color var(--dur-normal) var(--ease-standard);
+}
+.glass-input::placeholder {
+  color: var(--text-tertiary);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  background: var(--glass-fill);
+  box-shadow: 0 0 0 4px oklch(72% 0.17 var(--hue-violet) / 0.18), var(--inner-edge);
+}
+
+/* =============================================================================
+   AURORA — animated mesh-gradient backdrop behind the glass
+   ============================================================================= */
+.aurora {
+  position: fixed;
+  inset: -10%;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(140% 100% at 0% 0%, oklch(90% 0.05 var(--hue-sky) / 0.5), transparent 50%),
+    radial-gradient(120% 100% at 100% 0%, oklch(88% 0.06 var(--hue-pink) / 0.45), transparent 50%),
+    var(--bg-base);
+}
+
+.aurora__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.65;
+  mix-blend-mode: screen;
+  animation: drift 26s var(--ease-out-expo) infinite alternate;
+}
+.aurora__blob--1 {
+  width: 48vw;
+  height: 48vw;
+  top: -8%;
+  left: -6%;
+  background: radial-gradient(circle, var(--accent-1), transparent 70%);
+}
+.aurora__blob--2 {
+  width: 42vw;
+  height: 42vw;
+  top: 30%;
+  right: -10%;
+  background: radial-gradient(circle, var(--accent-2), transparent 70%);
+  animation-delay: -8s;
+  animation-duration: 32s;
+}
+.aurora__blob--3 {
+  width: 40vw;
+  height: 40vw;
+  bottom: -12%;
+  left: 28%;
+  background: radial-gradient(circle, var(--accent-3), transparent 70%);
+  animation-delay: -16s;
+  animation-duration: 38s;
+}
+
+/* Fine grain overlay — gives the glass a tactile texture */
+.aurora__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .aurora__blob {
+    opacity: 0.5;
+  }
+  :root:not([data-theme="light"]) .aurora__grain {
+    opacity: 0.05;
+  }
+}
+
+/* =============================================================================
+   MISC helpers
+   ============================================================================= */
+.divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--glass-border) 20%,
+    var(--glass-border) 80%,
+    transparent
+  );
+  border: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--glass-fill-subtle);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
