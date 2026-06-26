@@ -156,11 +156,12 @@ useHead({ title: () => `${title.value} · Hermes` })
         <button
           v-if="ttsSupported"
           class="glass-btn glass-btn--icon"
-          aria-label="语音朗读设置"
-          title="语音朗读设置"
+          :class="{ 'glass-btn--primary': ttsSettings.autoPlay }"
+          :aria-label="ttsSettings.autoPlay ? '自动朗读已开启，打开语音设置' : '语音朗读设置'"
+          :title="ttsSettings.autoPlay ? '自动朗读已开启 · 点击调整' : '语音朗读设置'"
           @click="voiceSettingsOpen = true"
         >
-          <GlassIcon name="volume" :size="17" />
+          <GlassIcon :name="ttsSettings.autoPlay ? 'volume-auto' : 'volume'" :size="17" />
         </button>
         <button class="glass-btn glass-btn--icon" aria-label="重命名" title="重命名" @click="openRename">
           <GlassIcon name="pencil" :size="17" />

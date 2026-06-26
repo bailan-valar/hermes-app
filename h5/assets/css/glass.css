@@ -151,6 +151,12 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 .glass-btn--primary:hover {
+  /* Re-declare the gradient + size: `.glass-btn:hover` sets the `background`
+     shorthand at equal specificity and earlier source order, which would
+     otherwise clobber the accent gradient and leave a glass-grey plate behind
+     the white text. Keep the gradient, just slide its position for feedback. */
+  background: var(--accent-gradient);
+  background-size: 160% 160%;
   background-position: 100% 0;
   box-shadow: var(--shadow-glow);
 }
