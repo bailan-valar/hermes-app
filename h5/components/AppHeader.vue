@@ -113,4 +113,23 @@ const emit = defineEmits<{ back: [] }>()
     display: none;
   }
 }
+
+/* Compact header in landscape so the conversation keeps maximum height. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app-header {
+    top: var(--space-1);
+    padding: 0 var(--space-3);
+  }
+  .app-header__inner {
+    min-height: 48px;
+    padding: var(--space-1) var(--space-3);
+  }
+  .app-header__logo {
+    width: 32px;
+    height: 32px;
+  }
+  .app-header__title {
+    font-size: var(--text-base);
+  }
+}
 </style>

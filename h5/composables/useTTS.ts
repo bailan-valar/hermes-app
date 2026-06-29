@@ -34,6 +34,8 @@ export interface TtsSettings {
   voiceURI: string | null
   /** Auto-speak each assistant reply as soon as it finishes streaming. */
   autoPlay: boolean
+  /** After a recitation finishes naturally, auto-start voice input (listening). */
+  autoListen: boolean
 }
 
 const DEFAULT_SETTINGS: TtsSettings = {
@@ -41,7 +43,8 @@ const DEFAULT_SETTINGS: TtsSettings = {
   pitch: 1,
   volume: 1,
   voiceURI: null,
-  autoPlay: false
+  autoPlay: false,
+  autoListen: false
 }
 
 /**
@@ -65,10 +68,18 @@ let cursor = 0
 // lifetime — Chrome GCs unreferenced utterances mid-speech, silently killing
 // playback (and onend never fires). Module-scoped so it survives speakNext().
 let currentUtterance: SpeechSynthesisUtterance | null = null
+// Whether the playback in flight should count toward `naturalEnd` (i.e. drive
+// "auto-listen after recitation"). True for real recitations, false for the
+// 试听 preview and reset on every speak().
+let autoListenEligible = false
 
 export function useTTS() {
   const speaking = useState<boolean>('hermes:tts:speaking', () => false)
   const activeId = useState<string | null>('hermes:tts:activeId', () => null)
+  // Monotonic counter bumped ONLY when a recitation reaches its end naturally
+  // (never on manual stop / preview). Watched by the composer to auto-start
+  // voice input after the assistant finishes speaking.
+  const naturalEnd = useState<number>('hermes:tts:naturalEnd', () => 0)
   // Adjustable, app-wide settings (persist across messages and re-renders).
   const settings = useState<TtsSettings>('hermes:tts:settings', () => ({ ...DEFAULT_SETTINGS }))
   const supported = ref(false)
@@ -136,6 +147,9 @@ export function useTTS() {
     segments = pieces
     cursor = 0
     activeId.value = id ?? null
+    // Only a genuine recitation (not the settings 试听 sample) should trigger
+    // auto-listen when it ends.
+    autoListenEligible = id !== '__preview__'
     speaking.value = true
     speakNext()
   }
@@ -143,6 +157,9 @@ export function useTTS() {
   function speakNext(): void {
     if (!import.meta.client || !('speechSynthesis' in window)) return
     if (cursor >= segments.length) {
+      // Natural completion — signal the composer so it can auto-start voice
+      // input (when the user has enabled "auto-listen after recitation").
+      if (autoListenEligible) naturalEnd.value++
       finish()
       return
     }
@@ -223,6 +240,7 @@ export function useTTS() {
     supported: readonly(supported),
     speaking,
     activeId,
+    naturalEnd,
     settings,
     voiceList,
     speak,
@@ -263,7 +281,9 @@ function loadPersisted(): TtsSettings | null {
       pitch: clamp(isNumber(parsed.pitch) ? parsed.pitch : DEFAULT_SETTINGS.pitch, 0, 2),
       volume: clamp(isNumber(parsed.volume) ? parsed.volume : DEFAULT_SETTINGS.volume, 0, 1),
       voiceURI: typeof parsed.voiceURI === 'string' ? parsed.voiceURI : null,
-      autoPlay: typeof parsed.autoPlay === 'boolean' ? parsed.autoPlay : DEFAULT_SETTINGS.autoPlay
+      autoPlay: typeof parsed.autoPlay === 'boolean' ? parsed.autoPlay : DEFAULT_SETTINGS.autoPlay,
+      autoListen:
+        typeof parsed.autoListen === 'boolean' ? parsed.autoListen : DEFAULT_SETTINGS.autoListen
     }
   } catch {
     return null

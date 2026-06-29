@@ -43,13 +43,49 @@ const {
   interim: speechInterim,
   error: speechError,
   toggle: toggleSpeech,
-  stop: stopSpeech
+  stop: stopSpeech,
+  start: startSpeech
 } = useSpeech({ onFinal: appendSpeech })
+
+// Shared TTS state — used to auto-start voice input after a recitation ends.
+const { settings: ttsSettings, naturalEnd: ttsNaturalEnd } = useTTS()
 
 // Surface speech errors (e.g. denied mic permission) as a user-facing toast.
 watch(speechError, (msg) => {
   if (msg) toast.error(msg)
 })
+
+/**
+ * Auto-listen: when a recitation finishes naturally and the user has enabled
+ * "朗诵完毕自动聆听", start voice input hands-free. Triggered by the shared
+ * monotonic counter so only genuine completions (never manual stop / preview)
+ * kick this off.
+ */
+watch(ttsNaturalEnd, (n, prev) => {
+  if (!n || n === prev) return
+  if (!ttsSettings.value.autoListen) return
+  if (!speechSupported.value || isListening.value || props.disabled || props.pending) return
+  startSpeech()
+})
+
+/** Has any finalized text accumulated from dictation (drives the 发送 enabled state). */
+const hasText = computed(() => text.value.trim().length > 0)
+
+/** Cancel voice input: stop listening and keep whatever was dictated so it can
+ *  still be edited or sent manually. */
+function cancelSpeech(): void {
+  stopSpeech()
+}
+
+/** Redo: discard the dictated text and start a fresh recognition session. */
+function retrySpeech(): void {
+  stopSpeech()
+  text.value = ''
+  nextTick(autoGrow)
+  // Defer start one tick so the previous engine session can wind down; useSpeech
+  // auto-restarts from onend while shouldListen is true.
+  nextTick(() => startSpeech())
+}
 
 function submit() {
   const value = text.value.trim()
@@ -100,14 +136,14 @@ onMounted(() => autoGrow())
         @keydown="onKeydown"
       />
 
-      <!-- Voice dictation toggle — only where the Web Speech API is available -->
+      <!-- Voice dictation toggle — only where the Web Speech API is available.
+           Hidden while listening; the dedicated action bar below takes over. -->
       <button
-        v-if="speechSupported"
+        v-if="speechSupported && !isListening"
         class="glass-btn glass-btn--icon compose__mic"
-        :class="{ 'is-recording': isListening }"
-        :aria-pressed="isListening"
-        :aria-label="isListening ? '停止语音输入' : '语音输入'"
-        :title="isListening ? '停止语音输入' : '语音输入'"
+        aria-pressed="false"
+        aria-label="语音输入"
+        title="语音输入"
         :disabled="disabled"
         @click="toggleSpeech"
       >
@@ -124,7 +160,7 @@ onMounted(() => autoGrow())
         <GlassIcon name="stop" :size="18" />
       </button>
       <button
-        v-else
+        v-else-if="!isListening"
         class="glass-btn glass-btn--primary compose__send"
         :disabled="!text.trim() || disabled"
         aria-label="发送"
@@ -134,7 +170,48 @@ onMounted(() => autoGrow())
         <GlassIcon name="send" :size="18" :stroke="2.2" />
       </button>
     </div>
-    <p class="compose__hint">
+
+    <!-- Large voice-input actions — shown only while dictating. Big touch
+         targets for thumb reach on mobile; replaces the compact mic/send row. -->
+    <Transition name="fade">
+      <div
+        v-if="isListening"
+        class="compose__voice-actions"
+        role="group"
+        aria-label="语音输入控制"
+      >
+        <button
+          type="button"
+          class="glass-btn compose__vbtn compose__vbtn--cancel"
+          aria-label="取消语音输入"
+          @click="cancelSpeech"
+        >
+          <GlassIcon name="x" :size="20" :stroke="2.2" />
+          <span>取消</span>
+        </button>
+        <button
+          type="button"
+          class="glass-btn compose__vbtn compose__vbtn--retry"
+          aria-label="重新录音"
+          @click="retrySpeech"
+        >
+          <GlassIcon name="refresh" :size="20" :stroke="2.2" />
+          <span>重来</span>
+        </button>
+        <button
+          type="button"
+          class="glass-btn glass-btn--primary compose__vbtn compose__vbtn--send"
+          :disabled="!hasText"
+          aria-label="发送"
+          @click="submit"
+        >
+          <GlassIcon name="send" :size="20" :stroke="2.2" />
+          <span>发送</span>
+        </button>
+      </div>
+    </Transition>
+
+    <p v-if="!isListening" class="compose__hint">
       <GlassIcon name="sparkles" :size="12" :stroke="2.2" />
       Hermes 可调用终端、文件、网页搜索等工具 · <kbd>Enter</kbd> 发送 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行<template v-if="speechSupported"> · <GlassIcon name="mic" :size="12" :stroke="2.2" /> 语音输入</template>
     </p>
@@ -184,19 +261,6 @@ onMounted(() => autoGrow())
   color: var(--text-secondary);
 }
 .compose__mic:hover { color: var(--text-primary); }
-.compose__mic.is-recording {
-  color: oklch(58% 0.22 25);
-  background: oklch(72% 0.2 25 / 0.3);
-  animation: mic-pulse 1.6s var(--ease-out-expo) infinite;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .compose__mic.is-recording { color: oklch(74% 0.2 25); }
-}
-@keyframes mic-pulse {
-  0% { box-shadow: 0 0 0 0 oklch(60% 0.22 25 / 0.5); }
-  70% { box-shadow: 0 0 0 12px oklch(60% 0.22 25 / 0); }
-  100% { box-shadow: 0 0 0 0 oklch(60% 0.22 25 / 0); }
-}
 
 /* Live dictation caption */
 .compose__voice {
@@ -250,6 +314,23 @@ onMounted(() => autoGrow())
   border: 1px solid var(--glass-border-dim);
 }
 
+/* Large voice-input action bar — oversized touch targets for dictation mode */
+.compose__voice-actions {
+  display: flex;
+  gap: var(--space-2);
+  width: 100%;
+}
+.compose__vbtn {
+  flex: 1;
+  min-height: 56px;
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-base);
+  border-radius: var(--radius-md);
+}
+.compose__vbtn span { font-weight: 600; }
+.compose__vbtn--retry { color: var(--text-secondary); }
+.compose__vbtn--cancel { color: var(--text-secondary); }
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity var(--dur-normal) var(--ease-out-expo);
@@ -258,7 +339,20 @@ onMounted(() => autoGrow())
 .fade-leave-to { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .compose__mic.is-recording { animation: none; }
   .compose__voice-dot { animation: none; }
+}
+
+/* ── Mobile / landscape adaptation ───────────────────────────────── */
+/* No hardware keyboard hint on phones; the voice-action bar is the primary input surface. */
+@media (max-width: 640px) {
+  .compose__hint { display: none; }
+}
+/* In landscape the vertical budget is tight — slim the composer chrome. */
+@media (orientation: landscape) and (max-height: 480px) {
+  .compose__bar { padding: var(--space-1); }
+  .compose__vbtn { min-height: 48px; }
+  .compose__voice {
+    padding: var(--space-1) var(--space-3);
+  }
 }
 </style>

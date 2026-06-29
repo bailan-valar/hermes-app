@@ -21,6 +21,10 @@ function toggleAutoPlay(): void {
   settings.value = { ...settings.value, autoPlay: !settings.value.autoPlay }
 }
 
+function toggleAutoListen(): void {
+  settings.value = { ...settings.value, autoListen: !settings.value.autoListen }
+}
+
 function close(): void {
   emit('update:modelValue', false)
 }
@@ -66,6 +70,24 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
               class="switch"
               :class="{ 'switch--on': settings.autoPlay }"
               @click="toggleAutoPlay"
+            >
+              <span class="switch__thumb" />
+            </button>
+          </div>
+
+          <!-- Auto-listen toggle: hands-free conversation when combined with auto-play -->
+          <div class="field field--toggle glass glass--subtle">
+            <div class="toggle__info">
+              <span class="field__label">朗诵完毕自动聆听</span>
+              <span class="field__hint">朗读结束后自动开启语音输入，无需手动点击麦克风</span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="settings.autoListen"
+              class="switch"
+              :class="{ 'switch--on': settings.autoListen }"
+              @click="toggleAutoListen"
             >
               <span class="switch__thumb" />
             </button>
@@ -167,6 +189,10 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
 }
 .modal__panel {
   width: min(440px, 100%);
+  max-height: calc(100dvh - var(--space-8));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: var(--space-5);
   border-radius: var(--radius-lg);
   display: flex;
@@ -326,4 +352,17 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
 }
 .modal-enter-from,
 .modal-leave-to { opacity: 0; }
+
+/* ── Mobile: dock the panel as a bottom sheet for thumb reach ───────── */
+@media (max-width: 640px) {
+  .modal {
+    align-items: flex-end;
+    padding: var(--space-3) var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom));
+  }
+  .modal__panel {
+    width: 100%;
+    max-height: 88dvh;
+    border-radius: var(--radius-xl) var(--radius-xl) var(--radius-md) var(--radius-md);
+  }
+}
 </style>

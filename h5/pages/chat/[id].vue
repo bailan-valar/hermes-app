@@ -297,6 +297,9 @@ useHead({ title: () => `${title.value} · Hermes` })
   overflow-x: hidden;
   padding: var(--space-3) var(--space-2);
   scroll-behavior: smooth;
+  /* Keep scroll chained to this pane on mobile so the body/page doesn't bounce. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .chat__inner {
   display: flex;
@@ -368,4 +371,19 @@ useHead({ title: () => `${title.value} · Hermes` })
 }
 .fade-enter-from,
 .fade-leave-to { opacity: 0; }
+
+/* ── Phone + landscape compaction ────────────────────────────────── */
+@media (max-width: 640px) {
+  .chat { gap: var(--space-2); }
+  .chat__body { padding: var(--space-2); border-radius: var(--radius-lg); }
+  .chat__compose { padding-top: 0; }
+  .chat__jump { right: var(--space-3); bottom: 104px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .chat { gap: var(--space-2); }
+  .chat__body { padding: var(--space-2); border-radius: var(--radius-lg); }
+  .chat__scroll { padding: var(--space-2) var(--space-1); }
+  .chat__inner { gap: var(--space-3); }
+  .chat__jump { bottom: 96px; }
+}
 </style>

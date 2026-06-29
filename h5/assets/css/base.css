@@ -11,6 +11,7 @@
 }
 
 html {
+  height: 100%;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   scrollbar-gutter: stable;
@@ -22,23 +23,22 @@ body {
   line-height: 1.55;
   color: var(--text-primary);
   background-color: var(--bg-base);
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* App-shell model: a definite viewport height + no body scroll. Every page
+     manages its own internal scroll pane (chat: .chat__scroll; list: .page__body).
+     This keeps the header and composer pinned within the viewport on phones and
+     in landscape instead of being pushed off-screen by tall message content.
+     Safe-area insets are applied on the content frame (.layout__main), not here,
+     so 100dvh never overflows the viewport on notched devices. */
+  height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
-  /* Account for notched devices */
-  padding:
-    env(safe-area-inset-top)
-    env(safe-area-inset-right)
-    env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+  overflow: hidden;
 }
 
 #nuxt-root,
 #__nuxt {
-  min-height: 100dvh;
+  height: 100%;
 }
 
 a {
@@ -104,7 +104,7 @@ svg {
 /* ── Layout helpers ──────────────────────────────────────────────── */
 .app-shell {
   position: relative;
-  min-height: 100dvh;
+  height: 100%;
   isolation: isolate;
 }
 
